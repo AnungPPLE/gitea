@@ -1,0 +1,54 @@
+name: Refresh base64 HTML asset payload
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - agent/remove-binary-test-fixtures
+    paths:
+      - "templates/**"
+      - "tools/html_asset_restore/pack.py"
+      - ".github/workflows/refresh-html-asset-payload.yml"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: refresh-html-asset-payload-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  refresh:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out branch
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref_name }}
+          fetch-depth: 1
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.x"
+
+      - name: Generate base64 payloads
+        run: python3 tools/html_asset_restore/pack.py
+
+      - name: Validate restore payload
+        run: python3 restore.py --check
+
+      - name: Commit generated payload
+        shell: bash
+        run: |
+          if git diff --quiet -- tools/html_asset_restore/manifest.json tools/html_asset_restore/payload; then
+            echo "Payload is already current."
+            exit 0
+          fi
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add tools/html_asset_restore/manifest.json tools/html_asset_restore/payload
+          git commit -m "refresh base64 template payload"
+          git push
