@@ -1,0 +1,8 @@
+{
+  "files": [],
+  "patterns": [
+    "templates/**/*.tmpl"
+  ],
+  "source_commit": null,
+  "version": 1
+}
